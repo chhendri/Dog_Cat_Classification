@@ -1,4 +1,5 @@
 import os
+import pickle
 
 import numpy as np
 import pandas as pd
@@ -19,8 +20,8 @@ class DogCatClassifier:
         self.epochs = epochs
 
         # Load data
-        # self.X = sorted(os.listdir(data))
-        self.X = sorted(np.random.choice(os.listdir(data), replace=False, size=500))
+        self.X = sorted(os.listdir(data))
+        # self.X = sorted(np.random.choice(os.listdir(data), replace=False, size=500))
         self.y = np.empty(len(self.X), dtype=str)
         self.y[np.char.startswith(self.X, "cat")] = "cat"
         self.y[np.char.startswith(self.X, "dog")] = "dog"
@@ -125,3 +126,6 @@ class DogCatClassifier:
 if __name__ == "__main__":
     clf = DogCatClassifier()
     clf.train()
+
+    with open("test", "wb") as file:
+        pickle.dump(clf, file)
