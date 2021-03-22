@@ -1,5 +1,4 @@
 import os
-import pickle
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,15 +11,15 @@ from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, Flatten, Dropou
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.optimizers import RMSprop
 
-AUTOTUNE = tf.data.AUTOTUNE
+SAVE_DIR = "backup"
 
 
 class DogCatClassifier:
     IMG_HEIGHT = 256
     IMG_WIDTH = 256
-    BATCH_SIZE = 16
+    BATCH_SIZE = 64
 
-    def __init__(self, data="data", epochs=10):
+    def __init__(self, data="data", epochs=100):
         self.epochs = epochs
 
         # Load data
@@ -36,7 +35,7 @@ class DogCatClassifier:
         train_set, val_set, test_set = self._gen_data()
 
         # Fit the model
-        cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath="backup/weights-{epoch:03d}.ckpt",
+        cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=os.path.join(SAVE_DIR, "weights-{epoch:03d}.ckpt"),
                                                          save_weights_only=True,
                                                          verbose=1)
 
@@ -49,7 +48,8 @@ class DogCatClassifier:
 
         # Show the predictions on the testing set
         step_size_test = test_set.n // test_set.batch_size
-        self.model.evaluate(test_set, steps=step_size_test)
+        result = self.model.evaluate(test_set, steps=step_size_test)
+        print("testing set evaluation:", dict(zip(self.model.metrics_names, result)))
 
         # Plot training results
         acc = history.history['accuracy']
@@ -60,7 +60,7 @@ class DogCatClassifier:
 
         epochs_range = range(self.epochs)
 
-        plt.figure(figsize=(8, 8))
+        plt.figure(figsize=(8, 4))
         plt.subplot(1, 2, 1)
         plt.plot(epochs_range, acc, label='Training Accuracy')
         plt.plot(epochs_range, val_acc, label='Validation Accuracy')
@@ -72,7 +72,8 @@ class DogCatClassifier:
         plt.plot(epochs_range, val_loss, label='Validation Loss')
         plt.legend(loc='upper right')
         plt.title('Training and Validation Loss')
-        plt.show()
+
+        plt.savefig(os.path.join(SAVE_DIR, "results.png"))
 
     @classmethod
     def _load_model(cls):
@@ -100,7 +101,7 @@ class DogCatClassifier:
         model.add(Dense(1, activation="sigmoid"))
 
         model.compile(loss='binary_crossentropy',
-                      optimizer=RMSprop(lr=1e-4),
+                      optimizer=RMSprop(lr=1e-3),
                       metrics=['accuracy', 'AUC'])
         print(model.summary())
 
@@ -140,14 +141,11 @@ class DogCatClassifier:
         test_data_generator = test_datagen.flow_from_dataframe(df_test,
                                                                directory='data',
                                                                x_col='filename',
+                                                               y_col='class',
                                                                shuffle=False,
-                                                               batch_size=62,
-                                                               class_mode=None,
+                                                               batch_size=self.BATCH_SIZE,
+                                                               class_mode='binary',
                                                                target_size=(self.IMG_HEIGHT, self.IMG_WIDTH))
-
-        # train_data_generator = train_data_generator.cache().prefetch(buffer_size=AUTOTUNE)
-        # valid_data_generator = valid_data_generator.cache().prefetch(buffer_size=AUTOTUNE)
-        # test_data_generator = test_data_generator.cache().prefetch(buffer_size=AUTOTUNE)
 
         return train_data_generator, valid_data_generator, test_data_generator
 
