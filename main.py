@@ -195,6 +195,5 @@ class DogCatClassifier:
 
 
 if __name__ == "__main__":
-    # Fit the model
     clf = DogCatClassifier()
     clf.fit()
