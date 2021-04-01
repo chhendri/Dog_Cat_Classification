@@ -1,3 +1,9 @@
+"""
+Author: Chris ADAM
+Date: April 1st 2021
+Image classifier for dog and cat pictures using Deep Learning Convolutionnal Neural Network
+"""
+
 import os
 
 import matplotlib.pyplot as plt
@@ -11,55 +17,56 @@ from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, Flatten, Dropou
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.optimizers import RMSprop
 
-SAVE_DIR = "backup"
+SAVE_DIR = "backup"  # Save directory for backup weights during the training
 
 
 class DogCatClassifier:
+    """Classify pictures into car and dog categories"""
     IMG_HEIGHT = 256
     IMG_WIDTH = 256
     BATCH_SIZE = 64
 
-    def __init__(self, data="data", epochs=100):
+    def __init__(self, data_dir="data", epochs=100):
+        """
+        :param data_dir: directory of the data
+        :param epochs: number of epochs for the training
+        """
         self.epochs = epochs
+        self.data_dir = data_dir
 
-        # Load data
-        self.X = sorted(os.listdir(data))
-        # self.X = sorted(np.random.choice(os.listdir(data), replace=False, size=500))
-        self.y = np.empty(len(self.X), dtype=str)
-        self.y[np.char.startswith(self.X, "cat")] = "cat"
-        self.y[np.char.startswith(self.X, "dog")] = "dog"
+        # Load data and labels
+        self.X = sorted(os.listdir(self.data_dir))                # Files names of the images
+        self.y = np.empty(len(self.X), dtype=str)        # Labels
+        self.y[np.char.startswith(self.X, "cat")] = "c"
+        self.y[np.char.startswith(self.X, "dog")] = "d"
 
         self.model = DogCatClassifier._load_model()
 
-    def train(self):
+    def fit(self):
+        """Fit he model using the data in the selected directory"""
         train_set, val_set, test_set = self._gen_data()
 
-        # Fit the model
+        # callback object to save weights during the training
         cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=os.path.join(SAVE_DIR, "weights-{epoch:03d}.ckpt"),
                                                          save_weights_only=True,
                                                          verbose=1)
 
+        # Fit the model
         history = self.model.fit(train_set,
-                                 steps_per_epoch=train_set.n // DogCatClassifier.BATCH_SIZE,
                                  epochs=self.epochs,
                                  validation_data=val_set,
-                                 validation_steps=val_set.n // DogCatClassifier.BATCH_SIZE,
                                  callbacks=[cp_callback])
 
         # Show the predictions on the testing set
-        step_size_test = test_set.n // test_set.batch_size
-        result = self.model.evaluate(test_set, steps=step_size_test)
-        print("testing set evaluation:", dict(zip(self.model.metrics_names, result)))
+        result = self.model.evaluate(test_set, batch_size=self.BATCH_SIZE)
+        print("Testing set evaluation:", dict(zip(self.model.metrics_names, result)))
 
         # Plot training results
-        acc = history.history['accuracy']
-        val_acc = history.history['val_accuracy']
-
-        loss = history.history['loss']
-        val_loss = history.history['val_loss']
-
         epochs_range = range(self.epochs)
 
+        # Accuracy in training and validation sets as the training goes
+        acc = history.history['accuracy']
+        val_acc = history.history['val_accuracy']
         plt.figure(figsize=(8, 4))
         plt.subplot(1, 2, 1)
         plt.plot(epochs_range, acc, label='Training Accuracy')
@@ -67,6 +74,9 @@ class DogCatClassifier:
         plt.legend(loc='lower right')
         plt.title('Training and Validation Accuracy')
 
+        # Loss in training and validation sets as the training goes
+        loss = history.history['loss']
+        val_loss = history.history['val_loss']
         plt.subplot(1, 2, 2)
         plt.plot(epochs_range, loss, label='Training Loss')
         plt.plot(epochs_range, val_loss, label='Validation Loss')
@@ -77,10 +87,16 @@ class DogCatClassifier:
 
     @classmethod
     def _load_model(cls):
-        # Build a CNN model for image classification
+        """Build a CNN model for image classification"""
         model = Sequential()
-        model.add(Conv2D(128, (3, 3), input_shape=(cls.IMG_HEIGHT, cls.IMG_WIDTH, 3),
-                         activation="relu", padding="same"))
+
+        # 2D Convolutional layer
+        model.add(Conv2D(128,     # Number of filters
+                         (3, 3),  # Padding size
+                         input_shape=(cls.IMG_HEIGHT, cls.IMG_WIDTH, 3),  # Shape of the input images
+                         activation="relu",  # Output function of the neurons
+                         padding="same"))    # Behaviour of the padding region near the borders
+        # 2D Pooling layer to reduce image shape
         model.add(MaxPooling2D(pool_size=(2, 2)))
 
         model.add(Conv2D(128, (3, 3), activation="relu", padding="same"))
@@ -95,42 +111,70 @@ class DogCatClassifier:
         model.add(Conv2D(32, (3, 3), activation="relu", padding="same"))
         model.add(MaxPooling2D(pool_size=(2, 2)))
 
+        # Transform 2D input shape into 1D shape
         model.add(Flatten())
+        # Dense layer of fully connected neurons
         model.add(Dense(128, activation="relu"))
+        # Dropout layer to reduce overfitting, the argument is the proportion of random neurons ignored in the training
         model.add(Dropout(0.2))
+        # Output layer
         model.add(Dense(1, activation="sigmoid"))
 
-        model.compile(loss='binary_crossentropy',
-                      optimizer=RMSprop(lr=1e-3),
-                      metrics=['accuracy', 'AUC'])
-        print(model.summary())
+        model.compile(loss='binary_crossentropy',   # Loss function for binary classification
+                      optimizer=RMSprop(lr=1e-3),   # Optimizer function to update weights during the training
+                      metrics=['accuracy', 'AUC'])  # Metrics to monitor during training and testing
+
+        # Print model summary
+        model.summary()
 
         return model
 
     def _gen_data(self):
+        """Split the data set into training, validation and testing sets"""
+
+        # Split data into training+validation and testing sets
         X_train, X_test, y_train, y_test = train_test_split(self.X, self.y)
         df_train = pd.DataFrame({"filename": X_train,
                                  "class": y_train})
         df_test = pd.DataFrame({"filename": X_test,
                                 "class": y_test})
 
-        train_datagen = ImageDataGenerator(rescale=1/255, validation_split=0.2, preprocessing_function=preprocess_input,
-                                           horizontal_flip=True, shear_range=0.2, width_shift_range=0.2,
-                                           height_shift_range=0.2, zoom_range=0.2, rotation_range=30,
+        # use data generators as input for the model
+        train_datagen = ImageDataGenerator(rescale=1/255,  # Divide input values by 255 so it ranges between 0 and 1
+                                           # The images are converted from RGB to BGR, then each color channel is
+                                           # zero-centered with respect to the ImageNet dataset, without scaling.
+                                           preprocessing_function=preprocess_input,
+                                           validation_split=0.2,    # Size of the validation set
+                                           horizontal_flip=True,    # Includes random horizontal flips in the data set
+                                           shear_range=0.2,         # Includes random shears in the data set
+                                           height_shift_range=0.2,  # Includes random vertical shifts in the data set
+                                           width_shift_range=0.2,   # Includes random horizontal shifts in the data set
+                                           zoom_range=0.2,          # Includes random zooms in the data set
+                                           rotation_range=30,       # Includes random rotations in the data set
+                                           # Filling methods for undefined regions upon data augmentation
                                            fill_mode="nearest")
         test_datagen = ImageDataGenerator(rescale=1/255, preprocessing_function=preprocess_input)
 
+        # Load images in the data generators
         train_data_generator = train_datagen.flow_from_dataframe(df_train,
-                                                                 directory='data',
+                                                                 # Directory in which the files can be found
+                                                                 directory=self.data_dir,
+                                                                 # Column name for the image names
                                                                  x_col='filename',
+                                                                 # Column name for the labels
                                                                  y_col='class',
+                                                                 # Type of subset
                                                                  subset='training',
+                                                                 # Shuffle the data to avoid fitting the image order
                                                                  shuffle=True,
+                                                                 # batch size
                                                                  batch_size=self.BATCH_SIZE,
+                                                                 # Classification mode
                                                                  class_mode='binary',
+                                                                 # Target size of the images
                                                                  target_size=(self.IMG_HEIGHT, self.IMG_WIDTH))
         valid_data_generator = train_datagen.flow_from_dataframe(df_train,
-                                                                 directory='data',
+                                                                 directory=self.data_dir,
                                                                  x_col='filename',
                                                                  y_col='class',
                                                                  subset='validation',
@@ -139,7 +183,7 @@ class DogCatClassifier:
                                                                  class_mode='binary',
                                                                  target_size=(self.IMG_HEIGHT, self.IMG_WIDTH))
         test_data_generator = test_datagen.flow_from_dataframe(df_test,
-                                                               directory='data',
+                                                               directory=self.data_dir,
                                                                x_col='filename',
                                                                y_col='class',
                                                                shuffle=False,
@@ -151,5 +195,6 @@ class DogCatClassifier:
 
 
 if __name__ == "__main__":
+    # Fit the model
     clf = DogCatClassifier()
-    clf.train()
+    clf.fit()
