@@ -60,6 +60,9 @@ class DogCatClassifier:
         # Show the predictions on the testing set
         result = self.model.evaluate(test_set, batch_size=self.BATCH_SIZE)
         print("Testing set evaluation:", dict(zip(self.model.metrics_names, result)))
+        
+        # Save model information
+        self.model.save('CustomCNN')
 
         # Plot training results
         epochs_range = range(self.epochs)
