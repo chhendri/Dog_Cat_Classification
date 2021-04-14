@@ -11,17 +11,14 @@ class MyWindow(QMainWindow):
         self.setWindowTitle("Dog & Cat classifier")
         self.setFixedSize(600, 500)
         centralwidget = QWidget(self)
-        tab = QTabWidget(centralwidget)
-        tab.setGeometry(0, 0, 600, 500)
-        tab.addTab(PredictTab(), "Predictor")
-        tab.addTab(CNNTab(), "Home made CNN")
-        tab.addTab(CNNTab(), "Resnet 10")
+        PredictTab(centralwidget)
         self.setCentralWidget(centralwidget)
 
 
 class PredictTab(QWidget):
-    def __init__(self):
-        super(PredictTab, self).__init__()
+    def __init__(self, parent):
+        super(PredictTab, self).__init__(parent)
+        self.setFixedSize(600, 500)
         self.imgPath = []
         self.imgIndex = 0
         self.predictions = []
@@ -91,16 +88,17 @@ class PredictTab(QWidget):
             self.imgIndex = 0
             print('Selection :')
             for i in self.imgPath: print(i)
+            self.updatePixmap(self.imgPath[self.imgIndex])
             self.prevButton.setEnabled(False)
             if len(self.imgPath) >1: self.nextButton.setEnabled(True)
             elif len(self.imgPath) ==1: self.nextButton.setEnabled(False)
             self.updatePixmap(self.imgPath[self.imgIndex])
+            if self.cnn is not None: self.predict()
 
     def updatePixmap(self, path):
         self.imgLabel.setPixmap(QtGui.QPixmap(path))
         #self.imgLabel.setScaledContents(True)
-        if self.predictions[0] is not None:
-            self.predLabel.setText(str(self.predictions[self.imgIndex]))
+        self.predLabel.setText(str(self.predictions[self.imgIndex]))
 
     def predict(self):
         if len(self.imgPath)>0 and self.cnn is not None:
@@ -112,7 +110,7 @@ class PredictTab(QWidget):
 
         else:
             QMessageBox(QMessageBox.Warning, "Error",\
-                "Please select images and notwork model before making prediction").exec_()
+                "Please select images and neural notwork model before making prediction").exec_()
 
 
     def nextImg(self):
@@ -149,12 +147,3 @@ class PredictTab(QWidget):
             df = pd.DataFrame(data_tuples, columns=['Images','Predictions'])
             df.to_csv(fname)
             print(fname, "saved")
-
-
-class CNNTab(QWidget):
-    def __init__(self):
-        super(CNNTab, self).__init__()
-        mainLayout = QVBoxLayout(self)
-        trainButton = QPushButton("load", self)
-
-        #mainLayout.addWidget(trainButton)
