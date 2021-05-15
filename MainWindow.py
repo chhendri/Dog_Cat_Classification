@@ -2,7 +2,9 @@ from PyQt5.QtWidgets import QTabWidget, QLabel, QMessageBox, QFileDialog, QHBoxL
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QMessageBox, QVBoxLayout
 from PyQt5 import QtCore, QtWidgets, QtGui
 from ModelWindow import ModelWindow
+from KernelWindow import KernelWindow
 from skimage import io, transform
+from Conv_operation import Transformations
 import pandas as pd
 
 class MyWindow(QMainWindow):
@@ -23,6 +25,8 @@ class PredictTab(QWidget):
         self.imgIndex = 0
         self.predictions = []
         self.cnn = None
+        self.kernel_name = None
+        self.n_layers = 1
         mainLayout = QVBoxLayout(self)
 
         self.imgLabel = QLabel()
@@ -37,7 +41,7 @@ class PredictTab(QWidget):
         self.nextButton.setEnabled(False)
         self.predLabel = QLabel("None")
         self.predLabel.setAlignment(QtCore.Qt.AlignCenter)
-        self.predLabel.setFixedWidth(100)
+        self.predLabel.setFixedWidth(300)
         self.predLabel.setFixedHeight(20)
         hWidget1 = QWidget(self)
         hWidget1.setFixedHeight(20)
@@ -51,18 +55,26 @@ class PredictTab(QWidget):
         hWidget3.setFixedHeight(25)
         hLayout3 = QHBoxLayout(hWidget3)
         hLayout3.setContentsMargins(0,0,0,0)
+        hWidget4 = QWidget(self)
+        hWidget4.setFixedHeight(25)
+        hLayout4 = QHBoxLayout(hWidget4)
+        hLayout4.setContentsMargins(0,0,0,0)
         #hWidget.setStyleSheet("border: 1px solid red; padding: 0 0 0 0; margin: 0px;")
 
         loadButton = QPushButton("Select picture(s)")
         modelButton = QPushButton("Select model (none)")
         predButton = QPushButton("Predict")
         exportButton = QPushButton("Export")
+        convolveButton = QPushButton("Apply convolution")
+        kernelButton = QPushButton("Choose kernel")
         loadButton.clicked.connect(self.loadImg)
         self.prevButton.clicked.connect(self.prevImg)
         self.nextButton.clicked.connect(self.nextImg)
         modelButton.clicked.connect(lambda :self.selectedModel(modelButton))
         predButton.clicked.connect(self.predict)
         exportButton.clicked.connect(self.export)
+        kernelButton.clicked.connect(lambda :self.choose_kernel(kernelButton))
+        convolveButton.clicked.connect(self.convolve)
 
         mainLayout.addWidget(self.imgLabel)
         hLayout1.addWidget(self.prevButton)
@@ -72,9 +84,12 @@ class PredictTab(QWidget):
         hLayout2.addWidget(modelButton)
         hLayout3.addWidget(predButton)
         hLayout3.addWidget(exportButton)
+        hLayout4.addWidget(convolveButton)
+        hLayout4.addWidget(kernelButton)
         mainLayout.addWidget(hWidget1)
         mainLayout.addWidget(hWidget2)
         mainLayout.addWidget(hWidget3)
+        mainLayout.addWidget(hWidget4)
 
     def loadImg(self):
         dialog = QFileDialog()
@@ -95,18 +110,23 @@ class PredictTab(QWidget):
             self.updatePixmap(self.imgPath[self.imgIndex])
             if self.cnn is not None: self.predict()
 
-    def updatePixmap(self, path):
-        self.imgLabel.setPixmap(QtGui.QPixmap(path))
+    def updatePixmap(self, path, pred=1000):
+        self.imgLabel.setPixmap(QtGui.QPixmap(path).scaled(500, 500))
         #self.imgLabel.setScaledContents(True)
         self.predLabel.setText(str(self.predictions[self.imgIndex]))
+        if pred < 0.5:
+            self.predLabel.setText("I think it's a cat!")
+        elif pred > 0.5 and pred != 1000:
+            self.predLabel.setText("I think it's a dog!")
+        else:
+            self.predLabel.setText("I don't know yet ")
 
     def predict(self):
         if len(self.imgPath)>0 and self.cnn is not None:
             for i in range(len(self.imgPath)):
                 img = transform.resize(io.imread(self.imgPath[i]), (256,256), anti_aliasing=True)
                 self.predictions[i] = self.cnn.predict(img.reshape(1, 256, 256, 3), 1)[0][0]
-                print(self.predictions[i])
-            self.updatePixmap(self.imgPath[self.imgIndex])
+            self.updatePixmap(self.imgPath[self.imgIndex], self.predictions[i])
 
         else:
             QMessageBox(QMessageBox.Warning, "Error",\
@@ -147,3 +167,27 @@ class PredictTab(QWidget):
             df = pd.DataFrame(data_tuples, columns=['Images','Predictions'])
             df.to_csv(fname)
             print(fname, "saved")
+
+    def choose_kernel(self, btn):
+        win = KernelWindow()
+        if win.exec_():
+            self.kernel_name = win.getKernel()
+            self.n_layers = int(win.getNlayers())
+            btn.setText('Select kernel ({})'.format(self.kernel_name))
+
+    def convolve(self):
+        if self.kernel_name == None:
+            QMessageBox(QMessageBox.Warning, "Error",\
+                "Please select a kernel before convoluting").exec_()
+        else:
+            for img in self.imgPath:
+                # Apply one convolution + pooling operation
+                t = Transformations(img)
+                t.choose_kernel(self.kernel_name)
+                conv_name = t.multilayer(self.n_layers)
+                self.imgLabel.setPixmap(QtGui.QPixmap(conv_name).scaled(500, 500))
+                self.predLabel.setText(str(self.kernel_name + " convolution with " + str(self.n_layers) + " layers and maxpooling"))
+
+
+
+
