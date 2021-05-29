@@ -1,9 +1,7 @@
 # Dog_Cat_Classification
-Classification of Dog and Cat images using CNN
+Report writing 
 
-- [X] Split dataset
-- [X] Load labels
-- [X] Model
-- [ ] Test parameters
-- [ ] Data augmentation and compare
-- [X] Save trained model in file
+- [ ] Discuss the results
+- [ ] Compare the performances with the other algorithms (other groups)
+- [ ] Explain the choice of relu, binary-crossentropy, rmsProp, ...
+
