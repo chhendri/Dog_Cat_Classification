@@ -1,3 +1,7 @@
+"""
+Author: Olivier Renson
+"""
+
 import sys
 from PyQt5 import QtGui, QtCore
 from MainWindow import MyWindow
