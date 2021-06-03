@@ -8,14 +8,3 @@ Useful documents:
   - mainGUI.py : Script to launch the GUI: features: give one/multiple images and get the classification, visualize convolution operation on one image (parameters = number of convolution + maxpooling layers and kernel type)
 
 
-
-
-
-
-Report writing 
-
-- [x] Introduction
-- [ ] Discuss the results
-- [ ] Compare the performances with the other algorithms (other groups)
-- [ ] Explain the choice of relu, binary-crossentropy, rmsProp, ...
-
