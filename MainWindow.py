@@ -110,23 +110,25 @@ class PredictTab(QWidget):
             self.updatePixmap(self.imgPath[self.imgIndex])
             if self.cnn is not None: self.predict()
 
-    def updatePixmap(self, path, pred=1000):
+    def updatePixmap(self, path):
         self.imgLabel.setPixmap(QtGui.QPixmap(path).scaled(500, 500))
-        #self.imgLabel.setScaledContents(True)
         self.predLabel.setText(str(self.predictions[self.imgIndex]))
-        if pred < 0.5:
-            self.predLabel.setText("I think it's a cat!")
-        elif pred > 0.5 and pred != 1000:
-            self.predLabel.setText("I think it's a dog!")
-        else:
-            self.predLabel.setText("I don't know yet ")
+        if self.predictions[self.imgIndex] is None:
+            self.predLabel.setText("I don't know yet")
+        elif self.predictions[self.imgIndex] < 0.5:
+            p = str(round((1-self.predictions[self.imgIndex])*100,2))
+            self.predLabel.setText("I think it's a cat ! "+p+"%")
+        elif self.predictions[self.imgIndex] > 0.5:
+            p = str(round(self.predictions[self.imgIndex]*100,2))
+            self.predLabel.setText("I think it's a dog ! "+p+"%")
 
     def predict(self):
         if len(self.imgPath)>0 and self.cnn is not None:
             for i in range(len(self.imgPath)):
                 img = transform.resize(io.imread(self.imgPath[i]), (256,256), anti_aliasing=True)
                 self.predictions[i] = self.cnn.predict(img.reshape(1, 256, 256, 3), 1)[0][0]
-            self.updatePixmap(self.imgPath[self.imgIndex], self.predictions[i])
+                print(self.predictions[i])
+            self.updatePixmap(self.imgPath[self.imgIndex])
 
         else:
             QMessageBox(QMessageBox.Warning, "Error",\
@@ -188,6 +190,5 @@ class PredictTab(QWidget):
                 self.imgLabel.setPixmap(QtGui.QPixmap(conv_name).scaled(500, 500))
                 self.predLabel.setText(str(self.kernel_name + " convolution with " + str(self.n_layers) + " layers and maxpooling"))
 
-
-
-
+                
+                
