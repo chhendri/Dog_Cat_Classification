@@ -182,13 +182,12 @@ class PredictTab(QWidget):
             QMessageBox(QMessageBox.Warning, "Error",\
                 "Please select a kernel before convoluting").exec_()
         else:
-            for img in self.imgPath:
-                # Apply one convolution + pooling operation
-                t = Transformations(img)
-                t.choose_kernel(self.kernel_name)
-                conv_name = t.multilayer(self.n_layers)
-                self.imgLabel.setPixmap(QtGui.QPixmap(conv_name).scaled(500, 500))
-                self.predLabel.setText(str(self.kernel_name + " convolution with " + str(self.n_layers) + " layers and maxpooling"))
+            # Apply one convolution + pooling operation
+            t = Transformations(self.imgPath[self.imgIndex])
+            t.choose_kernel(self.kernel_name)
+            conv_name = t.multilayer(self.n_layers)
+            self.imgLabel.setPixmap(QtGui.QPixmap(conv_name).scaled(500, 500))
+            self.predLabel.setText(str(self.kernel_name + " convolution with " + str(self.n_layers) + " layers and maxpooling"))
 
                 
                 
